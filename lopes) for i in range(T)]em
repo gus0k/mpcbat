@@ -1,0 +1,3 @@
+Help on method set_coefficients in module docplex.mp.linear:
+
+sseett__ccooeeffffiicciieennttss(var_coef_seq) method of docplex.mp.linear.LinearExpr instance

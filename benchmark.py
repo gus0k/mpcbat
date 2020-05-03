@@ -1,42 +1,65 @@
-from optimization import OptimizationProblem
+from structure import init_problem, update_problem
+from collections import Counter
 import numpy as np
+import time
 
 
-def random_problem(T, O):
+def get_data(T, L):
 
-    op = OptimizationProblem(T, O)
-    op.set_bmax(14)
-    op.set_bmin(0)
-    op.set_charge(0.5)
-    op.set_dmax(5)
-    op.set_dmin(5)
-    op.set_effc(0.95)
-    op.set_effd(0.95)
+    #prices = np.zeros((L, 7))
+    prices = np.zeros((L, 7))
+    for i in range(L): 
+        x = np.cumsum(np.random.uniform(0, .5, 2))
+        y = [1, 3 - 2 * x[1], 3 - 2 * x[0], 3]
+        prices[i, :4] = y
+#        prices[i, :4] = [1, 2, 3, 4]
 
-    p_ = np.random.uniform(0, 3, T)
-    for o in range(O):
-        op.set_prices(o, p_)
-        p_ += np.random.uniform(0, 3, T)
-    return op
-    
-T = 48
-op = random_problem(T, 2)
-%timeit l = np.random.uniform(-3, 3, T); op.set_load(l); op.optimize()
+        break_left = np.random.uniform(-0.5, 0, 1)
+        break_right = np.random.uniform(0, 0.5, 1)
+        prices[i, 4] = break_left
+        prices[i, 6] = break_right
 
-## 40.8 ms per iteration
+    loads = np.random.uniform(-2, 2, L)
 
 
-T = 96
-op = random_problem(T, 2)
-%timeit l = np.random.uniform(-3, 3, T); op.set_load(l); op.optimize()
+    data = {
+        'T':          T,
+        'num_slopes': 4,
+        'efc':        0.95,
+        'efd':        0.95,
+        'bmax':       13,
+        'bmin':       0,
+        'charge':     0,
+        'dmax':       5,
+        'dmin':       5,
+        'price': np.zeros((T, 7)),
+        'load':  np.zeros(T),
+    }
 
-## 127 ms per iteration
+    return data, prices, loads
 
 
-T = 96
-op = random_problem(T, 2)
-l = np.random.uniform(-3, 3, T * 20).reshape(20, T)
-i = 0
-%timeit i=0; op.set_load(l[i]); op.optimize(); i += 1
+T, H = 48, 500
+D, P, L = get_data(T, H)
 
-## 127 ms per iteration
+
+
+def simulate():
+    status = []
+    times = []
+    mo, c_, v_ = init_problem(D)
+    for i in range(0, H - T):
+        start = time.perf_counter()
+        price = P[i: i + T, :]
+        load = L[i : i + T]
+        D['price'] = price
+        D['load'] = load
+        mo = update_problem(mo, c_, v_, D)
+        sol = mo.solve()
+        end = time.perf_counter() - start
+        status.append(sol.solve_status)
+        times.append(end)
+        
+        if i % 50 == 0:
+            print('ITER', i)
+    return status, times
