@@ -193,7 +193,7 @@ def init_problem(data):
     return model, CONS, VARS
 
 
-def update_problem(model, CONS, VARS, data):
+def update_problem(model, CONS, VARS, data, EPS=1e-5):
 
     T, NS = data['T'], data['num_slopes']
     EC, ED = (1 / data['efc']), data['efd']
@@ -230,4 +230,47 @@ def update_problem(model, CONS, VARS, data):
         l.set_coefficients(new_vars)
         cc[(t, s)].set_right_expr(rhs[t, s])
 
+    c = model.find_matching_linear_constraints('commitment')
+    if len(c) > 0:
+        for c_iter in c:
+            model.remove(c_iter)
+
+    com = data.get('commitment', None)
+    if com is not None:
+        if com >= 0:
+            model.add_constraint(
+                    ct = model.sum(
+                        C_[0] * EC - D_[0] * ED + LOAD[t] >= com - EPS
+                        ),
+                    ctname = 'commitment'
+                    )
+        else:
+            model.add_constraint(
+                    ct = model.sum(
+                        C_[0] * EC - D_[0] * ED + LOAD[t] <= com + EPS
+                        ),
+                    ctname = 'commitment'
+                    )
+
+
     return model
+
+def cleanup_solution(model, con, var, data):
+
+    obj = model.solution.objective_value
+    T = len(var[0])
+    var_res = np.zeros(3 * T)
+    i = 0
+    for v_ in var:
+        for t in range(T):
+            var_res[i] = v_[t].solution_value
+            i += 1
+    ec, ed = (1 / data['efc']), data['efd']
+    net = ec * var_res[T: 2 * T] - var_res[2 * T:] * ed + data['load'] 
+
+    res = {
+            'obj': obj,
+            'var': var_res,
+            'net': net,
+            }
+    return res

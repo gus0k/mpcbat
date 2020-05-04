@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from structure import build_A, build_lu, build_price, init_problem, update_problem
+from structure import build_price, init_problem, update_problem, cleanup_solution
 
 @pytest.fixture
 def opt_problem_1():
@@ -76,71 +76,50 @@ def opt_problem_2():
 
     return data
 
-
-def test_check_build(opt_problem_1):
-
-    data, (A, l, u, cost) = opt_problem_1
     
-    A_, cost_, idx_, idy_ = build_A(**data)
-
-    
-    offsets = build_price(data['price'], data['num_slopes']).flatten()
-
-    
-    u_, l_ = build_lu(offset=offsets, **data)
-
-
-    new_prices = data['price'][:, :data['num_slopes']].flatten('F') 
-    A_[idx_, idy_] = new_prices
-
-    np.testing.assert_allclose(A, A_.toarray())
-    np.testing.assert_allclose(l_, l)
-    np.testing.assert_allclose(u_, u)
-    
-# def test_simple_opt_1(opt_problem_2):
-
-    # data = opt_problem_2 
-    # pr = init_problem(data) 
-    # sol = pr['osqp'].solve()
-    # np.testing.assert_allclose(sol.info.obj_val, 21.3, atol=1e-5)
-    # np.testing.assert_allclose(sol.x, np.array([2, 2, 13.8, 7.5, 0, 0, 0, 0]), atol=1e-5)
-
-    # data['charge'] = 0.5
-    # data['bmax'] = 0.5
-    # pr = update_problem(pr, data)
-    # sol = pr['osqp'].solve()
-    # np.testing.assert_allclose(sol.info.obj_val, 17.7, atol=1e-5)
-    # np.testing.assert_allclose(sol.x, np.array([1.55, 2, 10.2, 7.5, 0, 0, 0.5, 0]), atol=1e-5)
-
-    # data['price'][0] = np.array([2, 2, 3, 3, -1, 0 , 1])
-    # pr = update_problem(pr, data)
-    # sol = pr['osqp'].solve()
-    # np.testing.assert_allclose(sol.info.obj_val, 11.7, atol=1e-5)
-    # np.testing.assert_allclose(sol.x, np.array([2, 1.55, 6, 5.7, 0, 0, 0, 0.5]), atol=1e-5)
     
 def test_simple_opt_1(opt_problem_2):
 
     data = opt_problem_2 
     mo, c_, v_ = init_problem(data) 
-    sol = mo.solve()
-    np.testing.assert_allclose(sol.objective_value, 21.3, atol=1e-5)
-    np.testing.assert_allclose(sol.x, np.array([2, 2, 13.8, 7.5, 0, 0, 0, 0]), atol=1e-5)
+    _ = mo.solve()
+    res = cleanup_solution(mo, c_, v_, data)
+    np.testing.assert_allclose(res['obj'], 21.3, atol=1e-5)
+    np.testing.assert_allclose(res['var'], np.array([13.8, 7.5, 0, 0, 0, 0]), atol=1e-5)
+    np.testing.assert_allclose(res['net'], np.array([2.0, 2.0]), atol=1e-5)
+
 
     data['charge'] = 0.5
     data['bmax'] = 0.5
     mo = update_problem(mo, c_, v_, data)
-    sol = mo.solve()
+    _ = mo.solve()
+    res = cleanup_solution(mo, c_, v_, data)
+    np.testing.assert_allclose(res['obj'], 17.7, atol=1e-5)
+    np.testing.assert_allclose(res['var'], np.array([10.2, 7.5, 0, 0, 0.5, 0]), atol=1e-5)
+    np.testing.assert_allclose(res['net'], np.array([1.55, 2.0]), atol=1e-5)
 
-#    pr = update_problem(pr, data)
-#    sol = pr['osqp'].solve()
-#    np.testing.assert_allclose(sol.info.obj_val, 17.7, atol=1e-5)
-#    np.testing.assert_allclose(sol.x, np.array([1.55, 2, 10.2, 7.5, 0, 0, 0.5, 0]), atol=1e-5)
 
-    data['price'][0] = np.array([2, 2, 3, 3, -1, 0 , 1])
+    data['price'][1] = np.array([2, 2, 3, 3, -1, 0 , 1])
     mo = update_problem(mo, c_, v_, data)
-    sol = mo.solve()
+    _ = mo.solve()
+    res = cleanup_solution(mo, c_, v_, data)
+    np.testing.assert_allclose(res['obj'], 16.2, atol=1e-5)
+    np.testing.assert_allclose(res['var'], np.array([10.2, 6, 0, 0, 0.5, 0]), atol=1e-5)
+    np.testing.assert_allclose(res['net'], np.array([1.55, 2]), atol=1e-5)
 
-#    pr = update_problem(pr, data)
-#    sol = pr['osqp'].solve()
-#    np.testing.assert_allclose(sol.info.obj_val, 11.7, atol=1e-5)
-#    np.testing.assert_allclose(sol.x, np.array([2, 1.55, 6, 5.7, 0, 0, 0, 0.5]), atol=1e-5)
+    data['commitment'] = 1.7
+    mo = update_problem(mo, c_, v_, data)
+    _ = mo.solve()
+    res = cleanup_solution(mo, c_, v_, data)
+    np.testing.assert_allclose(res['obj'], 16.95, atol=1e-4)
+    np.testing.assert_allclose(res['var'], np.array([11.4, 5.55, 0, 0, 1/3, 1/6]), atol=1e-4)
+    np.testing.assert_allclose(res['net'], np.array([1.7, 1.85]), atol=1e-4)
+
+
+    del data['commitment']
+    mo = update_problem(mo, c_, v_, data)
+    _ = mo.solve()
+    res = cleanup_solution(mo, c_, v_, data)
+    np.testing.assert_allclose(res['obj'], 16.2, atol=1e-5)
+    np.testing.assert_allclose(res['var'], np.array([10.2, 6, 0, 0, 0.5, 0]), atol=1e-5)
+    np.testing.assert_allclose(res['net'], np.array([1.55, 2]), atol=1e-5)
