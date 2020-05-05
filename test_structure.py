@@ -123,3 +123,19 @@ def test_simple_opt_1(opt_problem_2):
     np.testing.assert_allclose(res['obj'], 16.2, atol=1e-5)
     np.testing.assert_allclose(res['var'], np.array([10.2, 6, 0, 0, 0.5, 0]), atol=1e-5)
     np.testing.assert_allclose(res['net'], np.array([1.55, 2]), atol=1e-5)
+
+
+def test_simple_opt_2(opt_problem_2):
+
+    data = opt_problem_2 
+    data['T'] = 1
+    data['price'] = np.array([[1, 1, 3, 3, 0, 0, 0]])
+    data['load'] = np.array([-2])
+
+    mo, c_, v_ = init_problem(data) 
+    _ = mo.solve()
+    res = cleanup_solution(mo, c_, v_, data)
+
+    np.testing.assert_allclose(res['obj'], -2, atol=1e-5)
+    np.testing.assert_allclose(res['var'], np.array([-2, 0, 0]), atol=1e-5)
+    np.testing.assert_allclose(res['net'], np.array([-2]), atol=1e-5)

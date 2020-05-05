@@ -125,7 +125,7 @@ def build_price(prices, num_slopes):
 
     # return controller
 
-def init_problem(data):
+def init_problem(data, neginf=-1e5):
 
     model = cpx.Model(name="MIP Model")
     T = data['T']
@@ -137,7 +137,9 @@ def init_problem(data):
     offsets = build_price(data['price'], data['num_slopes'])
 
     t_vars = {
-            j: model.continuous_var(name="t_{0}".format(j))
+            j: model.continuous_var(
+                lb=neginf,
+                name="t_{0}".format(j))
             for j in range(T)
             }
 
