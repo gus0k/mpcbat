@@ -1,5 +1,4 @@
 import numpy as np
-import osqp
 import scipy.sparse as sparse
 import docplex.mp.model as cpx
 from itertools import product
@@ -241,16 +240,12 @@ def update_problem(model, CONS, VARS, data, EPS=1e-5):
     if com is not None:
         if com >= 0:
             model.add_constraint(
-                    ct = model.sum(
-                        C_[0] * EC - D_[0] * ED + LOAD[t] >= com - EPS
-                        ),
+                    ct = model.sum( C_[0] * EC - D_[0] * ED + LOAD[0]) >= com - EPS,
                     ctname = 'commitment'
                     )
         else:
             model.add_constraint(
-                    ct = model.sum(
-                        C_[0] * EC - D_[0] * ED + LOAD[t] <= com + EPS
-                        ),
+                    ct = model.sum(C_[0] * EC - D_[0] * ED + LOAD[0]) <= com + EPS,
                     ctname = 'commitment'
                     )
 

@@ -131,6 +131,7 @@ def test_simple_opt_2(opt_problem_2):
     data['T'] = 1
     data['price'] = np.array([[1, 1, 3, 3, 0, 0, 0]])
     data['load'] = np.array([-2])
+    data['commitment'] = -1
 
     mo, c_, v_ = init_problem(data) 
     _ = mo.solve()
